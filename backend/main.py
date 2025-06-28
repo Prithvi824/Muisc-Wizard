@@ -31,6 +31,7 @@ APP = FastAPI(
     description="A music wizard that can create and match fingerprints of songs.",
     version="0.1.0",
     docs_url="/docs",
+    root_path="/backend"
 )
 
 # Add CORS middleware to the FastAPI app

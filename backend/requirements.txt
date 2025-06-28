@@ -9,7 +9,7 @@ uvicorn[standard]>=0.29
 # Database & migrations
 SQLAlchemy>=2.0
 alembic>=1.13
-psycopg2>=2.9.10
+psycopg2-binary>=2.9.10
 
 # Data validation & environment
 pydantic>=2.7
