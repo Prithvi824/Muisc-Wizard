@@ -1,0 +1,8 @@
+.ipynb_checkpoints
+__pycache__/
+.env
+*log
+downloaded_songs/
+test_songs/
+logs/
+node_modules/

@@ -1,0 +1,60 @@
+@import "tailwindcss";
+@plugin "daisyui";
+
+/* <============== FONTS =================> */
+@font-face {
+    font-family: "jeju-font";
+    src: url("/src/assets/fonts/JejuMyeongjo.ttf") format("truetype");
+    font-weight: normal;
+    font-style: normal;
+}
+/* <============== FONTS =================> */
+
+/* <============== TAILWIND =================> */
+@theme {
+    --color-paleBlue-gradient-l: oklch(74.99% 0.026 265.54);
+    --color-paleBlue-gradient-r: oklch(86.28% 0.033 258.37);
+    --color-yellowOchar: oklch(97.78% 0.035 94.54);
+    --color-whiteCard: oklch(94.91% 0 0);
+    --color-ytRed: oklch(62.8% 0.258 29.23);
+    --color-ytBlack: oklch(27.68% 0 0);
+    --color-greenBtn: oklch(90.4% 0.053 135.77);
+
+    --font-family-jeju: "jeju-font", sans-serif;
+}
+/* <============== TAILWIND =================> */
+
+/* <=============== Classes ==============> */
+.hero-container {
+    background-image: url("./assets/hero_bg.png");
+    aspect-ratio: 16 / 9;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    filter: brightness(0.6), contrast(0.7);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    border-radius: 19px;
+}
+/* <=============== Classes ==============> */
+
+/* <=============== Animations ==============> */
+.animate-svg {
+    animation: blink 1.5s infinite;
+}
+
+@keyframes blink {
+    0% {
+        fill: #ea2f14;
+        opacity: 1;
+    }
+    50% {
+        fill: #ff3f33;
+        opacity: 0.5;
+    }
+    100% {
+        fill: #ea2f14;
+        opacity: 1;
+    }
+}

@@ -1,0 +1,28 @@
+# backend/requirements.txt
+# ------------------------
+# Pinned minimal versions; adjust as desired.
+
+# Web framework
+fastapi>=0.110
+uvicorn[standard]>=0.29
+
+# Database & migrations
+SQLAlchemy>=2.0
+alembic>=1.13
+psycopg>=2-2.9.10
+
+# Data validation & environment
+pydantic>=2.7
+python-dotenv>=1.0
+
+# Audio analysis
+librosa>=0.10
+numpy>=1.26
+scipy>=1.11
+
+# HTTP and HTML helpers
+requests>=2.32
+beautifulsoup4>=4.12
+
+# Multipart parsing (pulled in by uvicorn[standard]; listed explicitly for clarity)
+python-multipart>=0.0.9
