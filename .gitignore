@@ -6,3 +6,7 @@ downloaded_songs/
 test_songs/
 logs/
 node_modules/
+bin/
+lib/
+lib64
+pyvenv.cfg
