@@ -42,7 +42,10 @@ SAMPLING_RATE = int(os.getenv("SAMPLE_RATE", 44100))
 # TODO: A proper confidence level should have to be determined
 CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", 0.00))
 
+# get the YT api key
+YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
+
 # check if all the required environment variables are set
-req_vars = [DB_URL, YT_TO_MP3_API_URL, RAPID_API_KEY, RAPID_API_HOST]
+req_vars = [DB_URL, YT_TO_MP3_API_URL, RAPID_API_KEY, RAPID_API_HOST, YOUTUBE_API_KEY]
 if not all(req_vars):
     raise ValueError("All the environment variables are not set...")

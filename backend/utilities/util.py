@@ -4,17 +4,16 @@ This module contains utility functions for the wizard.io package.
 
 # 1st party imports
 import os
-import json
 import logging
 import random
 import subprocess
-from typing import Dict, Any, Optional
+from typing import Optional
 
 # 3rd party imports
-import requests
-from bs4 import BeautifulSoup
+from googleapiclient.discovery import build
 
 # local imports
+from config import YOUTUBE_API_KEY
 from utilities.pydantic_models import SongYtInfo
 
 # setup logger
@@ -23,52 +22,32 @@ logger = logging.getLogger(__name__)
 
 def get_yt_info(video_id: str) -> Optional[SongYtInfo]:
     """
-    Extracts details like author name and thumbnail and returns.
+    Fetches YouTube video information using the YouTube v3 API.
 
     Args:
-        yt_url (str): The YouTube video URL.
+        video_id (str): The YouTube video ID.
 
     Returns:
-        SongYtInfo: A pydantic model containing the video information.
+        Optional[SongYtInfo]: The YouTube video information or None if the request failed.
     """
-
-    # Construct the YouTube Url
-    yt_url = f"https://www.youtube.com/watch?v={video_id}"
-
+    
+    # build the YouTube v3 API client
+    youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
+    
     try:
-        # fetch the YouTube video page
-        response = requests.get(yt_url)
-        response.raise_for_status()
-
-        # create a soup object to parse the HTML
-        soup = BeautifulSoup(response.text, "html.parser")
-
-        # parse the script tag containing the video data from raw html
-        video_data_dict = soup.find(
-            "script", string=lambda text: text and "ytInitialPlayerResponse" in text
+        # fetch the video information
+        request = youtube.videos().list(part="snippet", id=video_id)
+        response = request.execute()
+        
+        # extract the video information
+        item = response["items"][0]["snippet"]
+        return SongYtInfo(
+            author=item["channelTitle"],
+            thumbnail=item["thumbnails"]["high"]["url"],
         )
-        dict_data = video_data_dict.string.split("ytInitialPlayerResponse = ")[1].split(
-            "};"
-        )[0]
-        parsed_video_data: Dict[str, Any] = json.loads(dict_data + "}")
-
-        # Extract the author name and thumbnail URL from the response
-        author_name = parsed_video_data["videoDetails"]["author"]
-        thumbnail_url = parsed_video_data["videoDetails"]["thumbnail"]["thumbnails"][
-            -1
-        ]["url"]
-
-        # Return the video information as a pydantic model
-        return SongYtInfo(author=author_name, thumbnail=thumbnail_url)
-
-    # handle exceptions for network issues
-    except requests.RequestException as e:
-        logger.error(f"Network error while fetching YouTube video information: {e}")
-        return None
-
-    # handle exceptions for JSON parsing and key errors
-    except (json.JSONDecodeError, KeyError) as e:
-        logger.error(f"Error parsing YouTube video information: {e}")
+    except Exception as e:
+        # log the error if the request fails
+        logger.error(f"Error fetching video info: {e}")
         return None
 
 

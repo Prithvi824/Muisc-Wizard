@@ -91,6 +91,25 @@ def add_song(yt_url: str = Query(...), session: Session = Depends(api_get_sessio
             content=response.model_dump(mode="json", exclude_none=True),
         )
 
+    # get the YouTube video information
+    yt_info = get_yt_info(video_id)
+    if not yt_info:
+        logger.error(
+            f"Failed to fetch YouTube video information for video ID: {video_id}"
+        )
+
+        # create an response model
+        response = ApiResponse(
+            status=ApiStatus.ERROR,
+            error="Failed to fetch YouTube video information.",
+        )
+
+        # return the error response
+        return JSONResponse(
+            status_code=HTTPStatus.NOT_FOUND,
+            content=response.model_dump(mode="json", exclude_none=True),
+        )
+
     # get the song file from the YouTube to MP3 API
     path_and_title = WIZARD.get_song_from_yt_url(video_id)
     if not path_and_title:
@@ -110,25 +129,6 @@ def add_song(yt_url: str = Query(...), session: Session = Depends(api_get_sessio
 
     # unpack the song content and title
     song_path, title = path_and_title
-
-    # get the YouTube video information
-    yt_info = get_yt_info(video_id)
-    if not yt_info:
-        logger.error(
-            f"Failed to fetch YouTube video information for video ID: {video_id}"
-        )
-
-        # create an response model
-        response = ApiResponse(
-            status=ApiStatus.ERROR,
-            error="Failed to fetch YouTube video information.",
-        )
-
-        # return the error response
-        return JSONResponse(
-            status_code=HTTPStatus.NOT_FOUND,
-            content=response.model_dump(mode="json", exclude_none=True),
-        )
 
     # create fingerprints from the song content
     try:
