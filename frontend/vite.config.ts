@@ -14,6 +14,12 @@ export default defineConfig(({ mode }) => {
       host: '0.0.0.0',
       port: 3000,
       cors: true
-    }
+    },
+    define: Object.fromEntries(
+      Object.entries(env).map(([key, val]) => [
+        `import.meta.env.${key}`,
+        JSON.stringify(val)
+      ])
+    )
   }
 })
