@@ -10,6 +10,7 @@ from http import HTTPStatus
 
 # 3rd party imports
 from sqlalchemy.orm import Session
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from fastapi import FastAPI, Query, Depends, UploadFile, File
@@ -31,7 +32,7 @@ APP = FastAPI(
     description="A music wizard that can create and match fingerprints of songs.",
     version="0.1.0",
     docs_url="/docs",
-    root_path="/backend"
+    root_path="/backend",
 )
 
 # Add CORS middleware to the FastAPI app
@@ -45,7 +46,7 @@ APP.add_middleware(
 
 
 @APP.get("/add-song")
-def add_song(yt_url: str = Query(...), session: Session = Depends(api_get_session)):
+async def add_song(yt_url: str = Query(...), session: Session = Depends(api_get_session)):
     """
     Endpoint to add a song to the database.
     """
@@ -132,8 +133,9 @@ def add_song(yt_url: str = Query(...), session: Session = Depends(api_get_sessio
 
     # create fingerprints from the song content
     try:
-        new_song_id = WIZARD.create_and_store_fingerprint(
-            title=title,
+        await run_in_threadpool(
+            WIZARD.create_and_store_fingerprint,
+            title,
             path=song_path,
             author=yt_info.author,
             thumbnail=str(yt_info.thumbnail),
@@ -171,7 +173,6 @@ def add_song(yt_url: str = Query(...), session: Session = Depends(api_get_sessio
             "yt_url": "https://www.youtube.com/watch?v=" + video_id,
             "thumbnail": str(yt_info.thumbnail),
             "artist": yt_info.author,
-            "song_id": new_song_id
         },
     )
 
@@ -234,7 +235,10 @@ async def match_audio(
             # create a success response
             response = ApiResponse(
                 status=ApiStatus.SUCCESS,
-                data=[match_result.model_dump(mode="json") for match_result in match_results],
+                data=[
+                    match_result.model_dump(mode="json")
+                    for match_result in match_results
+                ],
             )
 
             # return the response
