@@ -7,48 +7,9 @@ import os
 import logging
 import random
 import subprocess
-from typing import Optional
-
-# 3rd party imports
-from googleapiclient.discovery import build
-
-# local imports
-from config import YOUTUBE_API_KEY
-from utilities.pydantic_models import SongYtInfo
 
 # setup logger
 logger = logging.getLogger(__name__)
-
-
-def get_yt_info(video_id: str) -> Optional[SongYtInfo]:
-    """
-    Fetches YouTube video information using the YouTube v3 API.
-
-    Args:
-        video_id (str): The YouTube video ID.
-
-    Returns:
-        Optional[SongYtInfo]: The YouTube video information or None if the request failed.
-    """
-    
-    # build the YouTube v3 API client
-    youtube = build("youtube", "v3", developerKey=YOUTUBE_API_KEY)
-    
-    try:
-        # fetch the video information
-        request = youtube.videos().list(part="snippet", id=video_id)
-        response = request.execute()
-        
-        # extract the video information
-        item = response["items"][0]["snippet"]
-        return SongYtInfo(
-            author=item["channelTitle"],
-            thumbnail=item["thumbnails"]["high"]["url"],
-        )
-    except Exception as e:
-        # log the error if the request fails
-        logger.error(f"Error fetching video info: {e}")
-        return None
 
 
 def convert_to_mp3(input_path: str, output_path: str = None) -> str:
