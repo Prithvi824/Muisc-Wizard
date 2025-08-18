@@ -14,7 +14,7 @@ from googleapiclient.discovery import build
 
 # local imports
 from utilities.pydantic_models import SongYtInfo
-from config import YOUTUBE_API_KEY, YT_TO_MP3_API_URL, QUERY_PARAM, API_KEY_HEADERS
+from config import YOUTUBE_API_KEY, YT_TO_MP3_API_URL, QUERY_PARAM, API_KEY_HEADERS, SONG_DIR
 
 
 class YtManager:

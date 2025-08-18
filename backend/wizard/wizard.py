@@ -397,6 +397,7 @@ class MusicWizard:
             except Exception as e:
                 logger.error(f"Error storing fingerprints in the database: {e}")
                 session.rollback()
+                return None
 
         return song.id
 

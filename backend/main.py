@@ -108,7 +108,7 @@ async def add_song(
 
     # create fingerprints from the song content
     try:
-        await run_in_threadpool(
+        song_id = await run_in_threadpool(
             WIZARD.create_and_store_fingerprint,
             title=title,
             path=song_path,
@@ -116,42 +116,50 @@ async def add_song(
             thumbnail=str(yt_info.thumbnail),
             video_id=video_id,
         )
+
+        # check if the song id is valid
+        if not song_id:
+            raise api_exceptions.FingerprintError(
+                detail="Failed to create fingerprint from song."
+            )
+
     except Exception as e:
         logger.error(f"Error processing video id - {video_id}: {e}")
-
-        # clean up the song file after processing
-        if os.path.exists(song_path):
-            os.remove(song_path)
 
         raise api_exceptions.FingerprintError(
             detail="Failed to create fingerprint from song."
         )
 
-    # clean up the song file after processing
-    if os.path.exists(song_path):
-        os.remove(song_path)
+    else:
 
-    # create a success response
-    logger.info(f"Song with video ID {video_id} added successfully to the database.")
-    response = ApiResponse(
-        status=ApiStatus.SUCCESS,
-        data={
-            "title": title,
-            "yt_url": "https://www.youtube.com/watch?v=" + video_id,
-            "thumbnail": str(yt_info.thumbnail),
-            "artist": yt_info.author,
-        },
-    )
+        # create a success response
+        logger.info(
+            f"Song with video ID {video_id} added successfully to the database."
+        )
+        response = ApiResponse(
+            status=ApiStatus.SUCCESS,
+            data={
+                "title": title,
+                "yt_url": "https://www.youtube.com/watch?v=" + video_id,
+                "thumbnail": str(yt_info.thumbnail),
+                "artist": yt_info.author,
+            },
+        )
 
-    return JSONResponse(
-        status_code=HTTPStatus.CREATED,
-        content=response.model_dump(mode="json", exclude_none=True),
-    )
+        return JSONResponse(
+            status_code=HTTPStatus.CREATED,
+            content=response.model_dump(mode="json", exclude_none=True),
+        )
+
+    finally:
+        # clean up the song file after processing
+        if os.path.exists(song_path):
+            os.remove(song_path)
 
 
 @APP.post("/match-audio")
 async def match_audio(
-    file: UploadFile = File(...), session: Session = Depends(api_get_session)
+    file: UploadFile = File(...)
 ):
     """
     Endpoint to match an uploaded audio file against the database.
@@ -159,7 +167,6 @@ async def match_audio(
 
     Args:
         file (UploadFile): The audio file to be matched.
-        session (Session): The database session.
 
     Returns:
         JSONResponse: A response indicating whether a match was found or not.
