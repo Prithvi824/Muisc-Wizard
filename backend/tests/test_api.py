@@ -70,7 +70,7 @@ class TestAddSongEndpoint:
         # check if the response is successful
         assert response.status_code == HTTPStatus.BAD_REQUEST
 
-    def test_song_already_exists(self, client: TestClient, get_test_db):
+    def test_song_already_exists(self, client: TestClient):
         """
         Test the add song endpoint with a YouTube URL that already exists in the database.
         """
@@ -101,3 +101,76 @@ class TestAddSongEndpoint:
 
         # check if the response data is valid
         assert response_two_data["data"]["yt_url"] == test_url
+
+
+class TestMatchAudioEndpoint:
+    """
+    This class contains the test cases for the match audio endpoint.
+
+    endpoint: /match-audio
+    method: POST
+    """
+
+    API_URL = "/match-audio"
+    ADD_SONG_API_URL = "/add-song"
+    TEST_SONG_VIDEO_ID = "vk6014HuxcE"
+    TEST_SONG_URL = f"https://www.youtube.com/watch?v={TEST_SONG_VIDEO_ID}"
+
+    def __register_song(self, client: TestClient) -> None:
+        """
+        This function is used to register a song in the database.
+
+        Args:
+            client (TestClient): The test client.
+        """
+
+        # register the song
+        client.get(self.ADD_SONG_API_URL, params={"yt_url": self.TEST_SONG_URL})
+        return None
+
+    def __match_audio_file(self, client: TestClient, file_path: str) -> Response:
+        """
+        This function is used to match an audio file.
+
+        Args:
+            client (TestClient): The test client.
+            file_path (str): The path to the audio file.
+
+        Returns:
+            Response: The response from the API.
+        """
+
+        # match the audio snippet
+        with open(file_path, "rb") as audio_file:
+            files = {"file": ("test_audio_snippet.mp3", audio_file, "audio/mp3")}
+            response = client.post(self.API_URL, files=files)
+
+        # return the response
+        return response
+
+    def test_match_correct_song(self, client: TestClient):
+        """
+        Test the match audio endpoint with a valid match.
+        """
+
+        # register the song
+        self.__register_song(client)
+
+        # match the audio snippet
+        response = self.__match_audio_file(client, self.VALID_FILE_PATH)
+
+        # parse the response
+        response_data = response.json()
+
+        # check if the response is successful
+        assert response.status_code == HTTPStatus.OK
+
+        # check if the response data is valid
+        assert response_data["status"] == "success"
+
+        print(f"\n\n{response_data}\n\n")
+
+        # check the match result
+        assert len(response_data["data"]) > 0
+        assert response_data["data"][0]["yt_url"] == self.TEST_SONG_VIDEO_ID
+        assert False

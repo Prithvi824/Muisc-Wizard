@@ -22,7 +22,6 @@ from exceptions import api_exceptions
 from wizard.wizard import MusicWizard
 from managers.youtube import YtManager
 from database.database import api_get_session
-from utilities.util import convert_to_mp3
 from utilities.pydantic_models import ApiResponse, ApiStatus
 
 # create an instance of the MusicWizard class
@@ -158,9 +157,7 @@ async def add_song(
 
 
 @APP.post("/match-audio")
-async def match_audio(
-    file: UploadFile = File(...)
-):
+async def match_audio(file: UploadFile = File(...)):
     """
     Endpoint to match an uploaded audio file against the database.
     This endpoint accepts an audio file and attempts to match it against the fingerprints stored in the database.
@@ -186,9 +183,6 @@ async def match_audio(
         file_path = f"{SONG_DIR}/{file.filename}"
         with open(file_path, "wb") as f:
             f.write(contents)
-
-        # convert it to mp3
-        file_path = convert_to_mp3(file_path)
 
         # match the audio from database
         match_results = WIZARD.create_and_match_fingerprint_from_db(file_path)
@@ -278,3 +272,12 @@ def get_all_songs(
     except Exception as e:
         logger.error(f"Error getting all songs: {e}")
         raise api_exceptions.InternalServerError(detail="Error getting all songs.")
+
+
+@APP.get("/health")
+def health_check():
+    """
+    Endpoint to check the health of the API.
+    """
+
+    return JSONResponse(status_code=HTTPStatus.OK)

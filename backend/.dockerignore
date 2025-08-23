@@ -1,0 +1,11 @@
+__pycache__/
+downloaded_songs/
+logs/
+README.md
+.git
+.gitignore
+.pytest_cache/
+.env
+tests/
+alembic/
+alembic.ini
