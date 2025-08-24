@@ -5,7 +5,6 @@ It contains the main function and the main logic for the project.
 
 # 1st party imports
 import os
-import re
 from http import HTTPStatus
 
 # 3rd party imports
@@ -19,13 +18,17 @@ from fastapi import FastAPI, Query, Depends, UploadFile, File
 from config import SONG_DIR
 from database.models import Song
 from utilities.logger import logger
+from exceptions import api_exceptions
 from wizard.wizard import MusicWizard
+from managers.youtube import YtManager
 from database.database import api_get_session
-from utilities.util import get_yt_info, convert_to_mp3
 from utilities.pydantic_models import ApiResponse, ApiStatus
 
 # create an instance of the MusicWizard class
 WIZARD = MusicWizard()
+
+# create an instance of the YtManager class
+YT_MANAGER = YtManager()
 
 APP = FastAPI(
     title="Music Wizard",
@@ -46,43 +49,35 @@ APP.add_middleware(
 
 
 @APP.get("/add-song")
-async def add_song(yt_url: str = Query(...), session: Session = Depends(api_get_session)):
+async def add_song(
+    yt_url: str = Query(...), session: Session = Depends(api_get_session)
+):
     """
     Endpoint to add a song to the database.
     """
 
-    # clean the yt url
-    regex_pattern = r"v=([^&]+)"
-    match = re.search(regex_pattern, yt_url)
-    if not match:
+    # get the video id from the url
+    video_id = YT_MANAGER.get_video_id_from_url(yt_url)
 
-        # create an response model
-        response = ApiResponse(
-            status=ApiStatus.ERROR,
-            error="Invalid YouTube URL. Please provide a valid YouTube video URL.",
+    # check if a valid video id was received
+    if not video_id:
+        raise api_exceptions.InvalidUrlError(
+            detail="Invalid YouTube URL. Please provide a valid YouTube video URL."
         )
-
-        return JSONResponse(
-            status_code=HTTPStatus.BAD_REQUEST,
-            content=response.model_dump(mode="json", exclude_none=True),
-        )
-
-    # extract the video ID from the URL
-    video_id = match.group(1)
 
     # check if the song already exists in the database
-    db_song = session.query(Song).filter(Song.yt_url == video_id).first()
-    if db_song:
+    song_in_db = Song.get_song_from_video_id(session, video_id)
+    if song_in_db:
         logger.info(f"Song with video ID {video_id} already exists in the database.")
 
         # create an response model
         response = ApiResponse(
             status=ApiStatus.SUCCESS,
             data={
-                "title": db_song.title,
-                "yt_url": "https://www.youtube.com/watch?v=" + db_song.yt_url,
-                "thumbnail": db_song.thumbnail,
-                "artist": db_song.artist,
+                "title": song_in_db.title,
+                "yt_url": "https://www.youtube.com/watch?v=" + song_in_db.yt_url,
+                "thumbnail": song_in_db.thumbnail,
+                "artist": song_in_db.artist,
             },
             error="Song already exists in the database.",
         )
@@ -93,39 +88,18 @@ async def add_song(yt_url: str = Query(...), session: Session = Depends(api_get_
         )
 
     # get the YouTube video information
-    yt_info = get_yt_info(video_id)
+    yt_info = YT_MANAGER.get_yt_info(video_id)
     if not yt_info:
-        logger.error(
-            f"Failed to fetch YouTube video information for video ID: {video_id}"
-        )
-
-        # create an response model
-        response = ApiResponse(
-            status=ApiStatus.ERROR,
-            error="Failed to fetch YouTube video information.",
-        )
-
-        # return the error response
-        return JSONResponse(
-            status_code=HTTPStatus.NOT_FOUND,
-            content=response.model_dump(mode="json", exclude_none=True),
+        raise api_exceptions.YtInfoFetchError(
+            detail="Failed to fetch YouTube video information."
         )
 
     # get the song file from the YouTube to MP3 API
-    path_and_title = WIZARD.get_song_from_yt_url(video_id)
+    path_and_title = YT_MANAGER.download_song_via_video_id(video_id)
     if not path_and_title:
         logger.error(f"Failed to download song from YouTube for video ID: {video_id}")
-
-        # create an response model
-        response = ApiResponse(
-            status=ApiStatus.ERROR,
-            error="Failed to download song from YT.",
-        )
-
-        # return the error response
-        return JSONResponse(
-            status_code=HTTPStatus.NOT_FOUND,
-            content=response.model_dump(mode="json", exclude_none=True),
+        raise api_exceptions.SongDownloadError(
+            detail="Failed to download song from YouTube."
         )
 
     # unpack the song content and title
@@ -133,66 +107,63 @@ async def add_song(yt_url: str = Query(...), session: Session = Depends(api_get_
 
     # create fingerprints from the song content
     try:
-        await run_in_threadpool(
+        song_id = await run_in_threadpool(
             WIZARD.create_and_store_fingerprint,
-            title,
+            title=title,
             path=song_path,
             author=yt_info.author,
             thumbnail=str(yt_info.thumbnail),
             video_id=video_id,
         )
+
+        # check if the song id is valid
+        if not song_id:
+            raise api_exceptions.FingerprintError(
+                detail="Failed to create fingerprint from song."
+            )
+
     except Exception as e:
         logger.error(f"Error processing video id - {video_id}: {e}")
 
+        raise api_exceptions.FingerprintError(
+            detail="Failed to create fingerprint from song."
+        )
+
+    else:
+
+        # create a success response
+        logger.info(
+            f"Song with video ID {video_id} added successfully to the database."
+        )
+        response = ApiResponse(
+            status=ApiStatus.SUCCESS,
+            data={
+                "title": title,
+                "yt_url": "https://www.youtube.com/watch?v=" + video_id,
+                "thumbnail": str(yt_info.thumbnail),
+                "artist": yt_info.author,
+            },
+        )
+
+        return JSONResponse(
+            status_code=HTTPStatus.CREATED,
+            content=response.model_dump(mode="json", exclude_none=True),
+        )
+
+    finally:
         # clean up the song file after processing
         if os.path.exists(song_path):
             os.remove(song_path)
 
-        # create an response model
-        response = ApiResponse(
-            status=ApiStatus.ERROR,
-            error="Error processing the song file.",
-        )
-
-        # return the error response
-        return JSONResponse(
-            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            content={"message": "Error processing the song file."},
-        )
-
-    # clean up the song file after processing
-    if os.path.exists(song_path):
-        os.remove(song_path)
-
-    # create a success response
-    logger.info(f"Song with video ID {video_id} added successfully to the database.")
-    response = ApiResponse(
-        status=ApiStatus.SUCCESS,
-        data={
-            "title": title,
-            "yt_url": "https://www.youtube.com/watch?v=" + video_id,
-            "thumbnail": str(yt_info.thumbnail),
-            "artist": yt_info.author,
-        },
-    )
-
-    return JSONResponse(
-        status_code=HTTPStatus.CREATED,
-        content=response.model_dump(mode="json", exclude_none=True),
-    )
-
 
 @APP.post("/match-audio")
-async def match_audio(
-    file: UploadFile = File(...), session: Session = Depends(api_get_session)
-):
+async def match_audio(file: UploadFile = File(...)):
     """
     Endpoint to match an uploaded audio file against the database.
     This endpoint accepts an audio file and attempts to match it against the fingerprints stored in the database.
 
     Args:
         file (UploadFile): The audio file to be matched.
-        session (Session): The database session.
 
     Returns:
         JSONResponse: A response indicating whether a match was found or not.
@@ -200,16 +171,8 @@ async def match_audio(
 
     # Check if the uploaded file is an audio file
     if not file.content_type.startswith("audio/"):
-
-        # create an error response
-        response = ApiResponse(
-            status=ApiStatus.ERROR,
-            error="Invalid file type. Please upload an audio file.",
-        )
-
-        return JSONResponse(
-            status_code=HTTPStatus.BAD_REQUEST,
-            content=response.model_dump(mode="json", exclude_none=True),
+        raise api_exceptions.InvalidFileTypeError(
+            detail="Invalid file type. Please upload an audio file."
         )
 
     try:
@@ -220,9 +183,6 @@ async def match_audio(
         file_path = f"{SONG_DIR}/{file.filename}"
         with open(file_path, "wb") as f:
             f.write(contents)
-
-        # convert it to mp3
-        file_path = convert_to_mp3(file_path)
 
         # match the audio from database
         match_results = WIZARD.create_and_match_fingerprint_from_db(file_path)
@@ -263,18 +223,7 @@ async def match_audio(
             os.remove(file_path)
 
         logger.error(f"Error matching audio file: {e}")
-
-        # create an error response
-        response = ApiResponse(
-            status=ApiStatus.ERROR,
-            error="Error processing the audio file.",
-        )
-
-        # return the error response
-        return JSONResponse(
-            status_code=HTTPStatus.INTERNAL_SERVER_ERROR,
-            content=response.model_dump(mode="json", exclude_none=True),
-        )
+        raise api_exceptions.InternalServerError(detail="Error matching audio file.")
 
 
 @APP.get("/songs")
@@ -289,32 +238,46 @@ def get_all_songs(
     Endpoint to get all songs from the database with pagination.
     """
 
-    # get all songs from the database with pagination
-    songs = session.query(Song).offset(skip).limit(limit).all()
-    total = session.query(Song).count()
+    try:
+        # get all songs from the database with pagination
+        songs = Song.get_all_songs(session, skip, limit)
+        total = len(songs)
 
-    # create the resulting array
-    result = [
-        {
-            "title": song.title,
-            "artist": song.artist,
-            "yt_url": song.yt_url,
-            "thumbnail": song.thumbnail,
-        }
-        for song in songs
-    ]
+        # create the resulting array
+        result = [
+            {
+                "title": song.title,
+                "artist": song.artist,
+                "yt_url": song.yt_url,
+                "thumbnail": song.thumbnail,
+            }
+            for song in songs
+        ]
 
-    # create a response
-    response = ApiResponse(
-        status=ApiStatus.SUCCESS,
-        data={
-            "total": total,
-            "count": len(result),
-            "songs": result,
-        },
-    )
+        # create a response
+        response = ApiResponse(
+            status=ApiStatus.SUCCESS,
+            data={
+                "total": total,
+                "count": len(result),
+                "songs": result,
+            },
+        )
 
-    return JSONResponse(
-        status_code=HTTPStatus.OK,
-        content=response.model_dump(mode="json", exclude_none=True),
-    )
+        return JSONResponse(
+            status_code=HTTPStatus.OK,
+            content=response.model_dump(mode="json", exclude_none=True),
+        )
+
+    except Exception as e:
+        logger.error(f"Error getting all songs: {e}")
+        raise api_exceptions.InternalServerError(detail="Error getting all songs.")
+
+
+@APP.get("/health")
+def health_check():
+    """
+    Endpoint to check the health of the API.
+    """
+
+    return JSONResponse(status_code=HTTPStatus.OK)

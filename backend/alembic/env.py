@@ -26,7 +26,7 @@ if config.config_file_name is not None:
 # add your model's MetaData object here for 'autogenerate' support
 target_metadata = Base.metadata
 
-# set the sqlalchemy.url to the DB_URL from the config
+# set the sqlalchemy.url to the DB_URL
 config.set_main_option("sqlalchemy.url", DB_URL)
 
 

@@ -4,8 +4,8 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig(({ mode }) => {
-  // Load environment variables from the repo root (one level up from /frontend)
-  const env = loadEnv(mode, resolve(__dirname, '..'))
+  // Load environment variables
+  const env = loadEnv(mode, resolve(__dirname))
 
   return {
     plugins: [react(), tailwindcss()],

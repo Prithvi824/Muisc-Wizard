@@ -5,6 +5,7 @@
 # Web framework
 fastapi>=0.110
 uvicorn[standard]>=0.29
+gunicorn==23.0.0
 
 # Database & migrations
 SQLAlchemy>=2.0

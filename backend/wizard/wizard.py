@@ -397,6 +397,7 @@ class MusicWizard:
             except Exception as e:
                 logger.error(f"Error storing fingerprints in the database: {e}")
                 session.rollback()
+                return None
 
         return song.id
 
@@ -596,6 +597,7 @@ class MusicWizard:
                 song = session.query(Song).filter(Song.id == song_id).first()
 
                 logger.info("Matched song: %s, with confidence: %s", song.title, confidence)
+                print(f"Matched song: {song.title}, with confidence: {confidence}")
 
                 # return the title, yt_url and timestamp of the best match
                 matching_result.append(
