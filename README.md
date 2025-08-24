@@ -12,6 +12,7 @@ It comprises:
 ---
 
 ## 🗺️ Repository Layout
+
 ```
 wizard.io/
 ├── backend/            # FastAPI service  ➜  backend/README.md
@@ -24,73 +25,151 @@ wizard.io/
 ```
 
 ## ⚙️ Tech Stack
-* **API:** FastAPI · SQLAlchemy · Alembic · Pydantic · Uvicorn  
-  Audio analysis via **Librosa**, **NumPy**, **SciPy**.  
-  YouTube → MP3 conversion through a RapidAPI endpoint.
-* **DB:** SQLite for local dev, Postgres in production.
-* **Client:** React 18 · TypeScript · Vite (optionally Tailwind CSS).
-* **Infra:** `.env` for configuration, GitHub Actions planned for CI, Docker-compose template WIP.
+
+-   **API:** FastAPI · SQLAlchemy · Alembic · Pydantic · Uvicorn  
+    Audio analysis via **Librosa**, **NumPy**, **SciPy**.  
+    YouTube → MP3 conversion through a RapidAPI endpoint.
+-   **DB:** SQLite for local dev, Postgres in production.
+-   **Client:** React 18 · TypeScript · Vite (optionally Tailwind CSS).
+-   **Deployment:** Docker with multi-stage builds for production-ready containerization.
+-   **Infra:** `.env` for configuration, GitHub Actions planned for CI.
 
 ---
 
-## 🚀 Quick Start
-### 1. Clone & create env
-```bash
-git clone https://github.com/your-user/music-wizard.git
-cd music-wizard/wizard.io
+## 🚀 Quick Start (Recommended: Docker)
 
-# optional but recommended
-python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
+### 🐳 Docker Deployment (Recommended)
+
+The easiest way to run Music Wizard is using Docker:
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/Prithvi824/Muisc-Wizard.git
+cd Muisc-Wizard
+
+# 2. Configure environment variables
+# Copy .env.example to .env and fill in your API keys
+cp .env.example .env
+# Edit .env with your RapidAPI credentials and other settings
+
+# 3. Build the Docker image
+cd backend
+docker build -t music-wizard-backend .
+
+# 4. Run the containerized backend
+docker run -d -p 8000:8000 --env-file .env music-wizard-backend
+
+# 5. Start the frontend (in a new terminal)
+cd ../frontend
+npm install
+npm run dev   # http://localhost:5173
 ```
 
-### 2. Configure secrets
-Copy `.env.example` ➜ `.env` at the repo root and fill in the keys (see table below).  
-⚠️ FFmpeg must be installed and available on your PATH.
+**Benefits of Docker deployment:**
 
-### 3. Start the backend
+-   ✅ No need to install Python dependencies locally
+-   ✅ Consistent environment across different systems
+-   ✅ Production-ready with Gunicorn and optimized performance
+-   ✅ Minimal attack surface with distroless runtime image
+-   ✅ Easy to scale and deploy
+
+### 📋 Manual Installation (Alternative)
+
+<details>
+<summary>Click to expand manual installation steps</summary>
+
+> ⚠️ **Note:** Docker deployment is recommended for better consistency and easier setup.
+
 ```bash
+# 1. Clone & create env
+git clone https://github.com/Prithvi824/Muisc-Wizard.git
+cd Muisc-Wizard
+
+# Create virtual environment (recommended)
+python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
+
+# 2. Configure secrets
+# Copy .env.example → .env and fill in the keys
+# ⚠️ FFmpeg must be installed and available on your PATH
+
+# 3. Start the backend
 pip install -r backend/requirements.txt      # install python deps
 alembic -c backend/alembic.ini upgrade head  # migrate database
 uvicorn backend.main:APP --reload            # http://localhost:8000/docs
-```
 
-### 4. Start the frontend (new terminal)
-```bash
+# 4. Start the frontend (new terminal)
 cd frontend
 npm install   # or pnpm / yarn
 npm run dev   # http://localhost:5173
 ```
-Now you can:
-1. `GET /add-song?yt_url=<youtube_url>` to load a song into the DB.  
-2. Record / upload a short clip from the UI → it hits `POST /match-audio` and displays matches.
 
-> Frontend dev server proxies API requests to `localhost:8000`, so CORS just works.
+</details>
+
+### 🎯 Getting Started
+
+Once your backend is running (via Docker or manually):
+
+1. **Add songs**: Visit `http://localhost:8000/docs` and use `GET /add-song?yt_url=<youtube_url>` to load songs into the database
+2. **Test recognition**: Open `http://localhost:5173`, record or upload a short audio clip, and see the magic happen!
+
+> Frontend dev server automatically proxies API requests to `localhost:8000` for seamless development.
 
 ---
 
 ## 🔑 Environment Variables
-Variable | Example | Description
----------|---------|------------
-`DB_STRING` | `sqlite:///wizard.db` | SQLAlchemy URI (use Postgres in prod)
-`ECHO_SQL` | `True` | Log SQL (debug only)
-`YT_TO_MP3_URL` | `https://yt-mp3.p.rapidapi.com/dl` | RapidAPI endpoint
-`QUERY_PARAM_YT_TO_MP3_URL` | `id` | Query-string key for above
-`RAPID_API_KEY` | _secret_ | RapidAPI key
-`RAPID_API_HOST`| _secret_ | RapidAPI host header
-`SONG_DIR` | `downloaded_songs` | Where MP3s are cached
-`SAMPLE_RATE` | `44100` | Audio resample rate
-`CONFIDENCE_THRESHOLD` | `0.3` | Minimum score for a match
-`VITE_API_URL` | `http://localhost:8000` | Frontend fetches API from this base URL
+
+> **Docker Users:** These variables should be set in your `.env` file when using `--env-file .env` with Docker.
+
+| Variable                    | Example                            | Description                             |
+| --------------------------- | ---------------------------------- | --------------------------------------- |
+| `DB_STRING`                 | `sqlite:///wizard.db`              | SQLAlchemy URI (use Postgres in prod)   |
+| `ECHO_SQL`                  | `True`                             | Log SQL (debug only)                    |
+| `YT_TO_MP3_URL`             | `https://yt-mp3.p.rapidapi.com/dl` | RapidAPI endpoint                       |
+| `QUERY_PARAM_YT_TO_MP3_URL` | `id`                               | Query-string key for above              |
+| `RAPID_API_KEY`             | _secret_                           | RapidAPI key                            |
+| `RAPID_API_HOST`            | _secret_                           | RapidAPI host header                    |
+| `SONG_DIR`                  | `downloaded_songs`                 | Where MP3s are cached                   |
+| `SAMPLE_RATE`               | `44100`                            | Audio resample rate                     |
+| `CONFIDENCE_THRESHOLD`      | `0.3`                              | Minimum score for a match               |
+| `VITE_API_URL`              | `http://localhost:8000`            | Frontend fetches API from this base URL |
 
 ---
 
 ## 🔍 Common Commands
-```bash
-# Run backend tests (when added)
-pytest
 
-# Generate new Alembic migration
-authoring="add-column" && alembic revision --autogenerate -m "$authoring"
+### Docker Commands
+
+```bash
+# Build the backend image
+docker build -t music-wizard-backend ./backend
+
+# Run with environment file
+docker run -d -p 8000:8000 --env-file .env music-wizard-backend
+
+# Run with persistent volumes (recommended for production)
+docker run -d -p 8000:8000 --env-file .env \
+  -v $(pwd)/downloaded_songs:/app/downloaded_songs \
+  -v $(pwd)/logs:/app/logs \
+  music-wizard-backend
+
+# View container logs
+docker logs <container_id>
+
+# Stop and remove container
+docker stop <container_id> && docker rm <container_id>
+```
+
+### Development Commands
+
+```bash
+# Frontend development
+cd frontend && npm run dev
+
+# Backend API documentation
+# Visit http://localhost:8000/docs (when backend is running)
+
+# Generate new Alembic migration (manual setup only)
+alembic revision --autogenerate -m "description"
 
 # Code quality
 ruff format . && ruff check .
@@ -102,19 +181,22 @@ npm test
 ---
 
 ## 🧩 Further Reading
-* Backend internals & API reference → `backend/README.md`
-* Frontend tooling & scripts → `frontend/README.md`
-* Research notes & papers → `research/`
+
+-   Backend internals & API reference → `backend/README.md`
+-   Frontend tooling & scripts → `frontend/README.md`
+-   Research notes & papers → `research/`
 
 ---
 
 ## 🤝 Contributing
-1. Fork & create a feature branch.  
-2. Keep commits small & focused; add tests where possible.  
-3. Run `pre-commit run -a` before pushing.  
+
+1. Fork & create a feature branch.
+2. Keep commits small & focused; add tests where possible.
+3. Run `pre-commit run -a` before pushing.
 4. Submit a PR – feedback welcome!
 
 ---
 
 ## 📝 License
+
 Released under the **MIT License**. See `LICENSE` for details.
