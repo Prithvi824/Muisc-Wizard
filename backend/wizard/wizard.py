@@ -21,11 +21,6 @@ from database.database import get_sync_session
 from database.models import Song, SongFingerPrints
 from utilities.pydantic_models import SongDbInfo
 
-
-from matplotlib import pyplot as plt
-from icecream import ic
-
-
 class MusicWizard:
     """
     The MusicWizard class provides functionality to generate audio fingerprints from music files,

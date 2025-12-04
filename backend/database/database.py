@@ -14,7 +14,6 @@ from sqlalchemy.orm import sessionmaker, Session
 # local imports
 from config import project_settings
 
-
 # Create a SQLAlchemy engine
 SQL_ENGINE = create_engine(
     project_settings.DB_STRING,
