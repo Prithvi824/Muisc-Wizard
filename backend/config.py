@@ -14,6 +14,9 @@ from pydantic_settings import BaseSettings
 # load environment variables from .env file
 load_dotenv()
 
+# The database schema to use
+DB_SCHEMA = "music_wizard"
+
 
 class Settings(BaseSettings):
     """
@@ -78,9 +81,19 @@ class Settings(BaseSettings):
         description="The api key headers for the rapid api.",
     )
 
+    DB_SCHEMA: str = Field(
+        default=DB_SCHEMA,
+        description="The schema for the database.",
+    )
+
 
 # create a instance to be used everywhere
 project_settings = Settings()
+
+# Override DB_STRING to include schema options
+base_db_string = os.getenv("DB_STRING")
+if base_db_string and "?options=" not in base_db_string:
+    project_settings.DB_STRING = base_db_string + f"?options=-csearch_path={DB_SCHEMA}"
 
 # create the download directory if it does not exist
 os.makedirs(project_settings.SONG_DIR, exist_ok=True)

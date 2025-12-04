@@ -16,10 +16,14 @@ from scipy.signal import butter, lfilter
 
 # local imports
 from utilities.logger import logger
+from config import project_settings
 from database.database import get_sync_session
 from database.models import Song, SongFingerPrints
 from utilities.pydantic_models import SongDbInfo
-from config import project_settings
+
+
+from matplotlib import pyplot as plt
+from icecream import ic
 
 
 class MusicWizard:
@@ -53,11 +57,11 @@ class MusicWizard:
 
     def __init__(
         self,
-        fan_value: int = 9,
-        neighborhood: Tuple[int] = (19, 19),
-        hop_length: int = 412,
+        fan_value: int = 20,
+        neighborhood: Tuple[int] = (20, 20),
+        hop_length: int = 512,
         min_time_delta: int = 1,
-        max_time_delta: int = 30,
+        max_time_delta: int = 50,
     ):
         """
         Initialize the MusicWizard class.
@@ -125,6 +129,7 @@ class MusicWizard:
             np.ndarray: The filtered audio signal.
         """
 
+        # calculate the nyquist frequency
         nyquist = 0.5 * project_settings.SAMPLE_RATE
         low = lowcut / nyquist
         high = highcut / nyquist
@@ -435,44 +440,74 @@ class MusicWizard:
                 .all()
             )
 
-            # Before voting tune the hashes to remove common hashes
-            hash_threshold = len(query_output) * 0.10
-            hash_counter = Counter([h for h, _, _ in query_output])
-            filtered_hashes = [
-                (hash, idx, song_id)
-                for hash, idx, song_id in query_output
-                if hash_counter[hash] < hash_threshold
-            ]
+        # Before voting tune the hashes to remove common hashes
+        hash_threshold = len(query_output) * 0.05
+        hash_counter = Counter([h for h, _, _ in query_output])
+        filtered_hashes = [
+            (hash, idx, song_id)
+            for hash, idx, song_id in query_output
+            if hash_counter[hash] > hash_threshold
+        ]
 
-            # vote for the best match
-            for db_hash, db_offset, db_song_id in filtered_hashes:
+        # vote for the best match
+        for db_hash, db_offset, db_song_id in filtered_hashes:
 
-                # for each hash value in the fingerprint get the timestamps
-                for timestamp in hash_values[db_hash]:
+            # for each hash value in the fingerprint get the timestamps
+            for timestamp in hash_values[db_hash]:
 
-                    # calculate the delta time
-                    delta = db_offset - timestamp
+                # calculate the delta time
+                delta = db_offset - timestamp
 
-                    # dont count negative deltas
-                    if delta < 0:
-                        continue
-                    votes[db_song_id][delta] += 1
+                # dont count negative deltas
+                if delta < 0:
+                    continue
 
-        # get the best 3 matches
+                # vote
+                votes[db_song_id][delta] += 1
+
+        # get the best matches
         match_candidates: List[Tuple[int, int, int]] = []
 
-        # iterate over the votes
+        # itearte
         for song_id, counter in votes.items():
 
-            # get the most common delta and count
-            delta, count = counter.most_common(1)[0]
-            match_candidates.append((song_id, delta, count))
+            # no counter
+            if not counter:
+                continue
+
+            # Build prefix-sum to do windowed sums efficiently
+            # We'll aggregate votes within ±delta_tolerance for each delta
+            # Simpler approach: for each delta in counter, sum counter[k] for k in [d - tol, d + tol]
+            best_delta = None
+            best_count = 0
+            for delta_key in counter:
+
+                # sum votes within tolerance window
+                window_sum = sum(
+                    counter.get(k, 0) for k in range(delta_key - 5, delta_key + 5)
+                )
+
+                # if new best found
+                if window_sum > best_count:
+                    best_count = window_sum
+                    best_delta = delta_key
+
+            # if best delta not found
+            if best_delta is None:
+                continue
+
+            # add candidate
+            match_candidates.append((song_id, best_delta, best_count))
 
         # sort by count descending and take top 3
         top_matches = sorted(match_candidates, key=lambda x: x[2], reverse=True)[:3]
 
+        # hold results
         results = []
+
+        # look through top matches
         for song_id, delta, count in top_matches:
+
             # get the timestamp and add to result
             timestamp = abs(delta or 0) / self.frame_rate
 
@@ -483,6 +518,7 @@ class MusicWizard:
             if confidence >= project_settings.CONFIDENCE_THRESHOLD:
                 results.append((song_id, timestamp, confidence))
 
+        # return results
         return results if results else None
 
     def get_song_from_yt_url(self, video_id: str) -> Optional[Tuple[str, str]]:

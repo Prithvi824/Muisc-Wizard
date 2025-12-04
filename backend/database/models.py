@@ -15,6 +15,9 @@ from sqlalchemy.orm import (
     relationship,
 )
 
+# local imports
+from config import project_settings
+
 # create a base class for the models
 metadata = MetaData()
 Base = declarative_base(metadata=metadata)
@@ -37,7 +40,10 @@ class Song(Base):
 
     # fingerprints
     fingerprints: Mapped[List["SongFingerPrints"]] = relationship(
-        back_populates="song", cascade="all, delete-orphan"
+        "SongFingerPrints",
+        back_populates="song",
+        passive_deletes=True,
+        cascade="all, delete-orphan",
     )
 
     @classmethod
@@ -87,5 +93,7 @@ class SongFingerPrints(Base):
     fingerprint_hash: Mapped[int] = mapped_column(nullable=False, index=True)
 
     # Relationship fields
-    song_id: Mapped[int] = mapped_column(ForeignKey("songs.id"))
-    song: Mapped["Song"] = relationship(back_populates="fingerprints")
+    song_id: Mapped[int] = mapped_column(
+        ForeignKey("songs.id", ondelete="CASCADE"), nullable=False
+    )
+    song: Mapped["Song"] = relationship("Song", back_populates="fingerprints")
