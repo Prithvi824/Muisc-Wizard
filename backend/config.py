@@ -4,48 +4,83 @@ This file contains the configuration for the project.
 
 # 1st party imports
 import os
+from typing import Dict, Any
 
 # 3rd party imports
 from dotenv import load_dotenv
+from pydantic import Field
+from pydantic_settings import BaseSettings
 
 # load environment variables from .env file
 load_dotenv()
 
-# get the database URL from the environment variables
-DB_URL = os.getenv("DB_STRING")
 
-# SQL DEBUG
-ECHO_SQL = os.getenv("ECHO_SQL", False)
+class Settings(BaseSettings):
+    """
+    This class consists of all the configuration variables for the project.
+    """
 
-# Yt to Mp3 API URL
-YT_TO_MP3_API_URL = os.getenv("YT_TO_MP3_URL")
-QUERY_PARAM = os.getenv("QUERY_PARAM_YT_TO_MP3_URL", "id")
+    DB_STRING: str = Field(
+        default=os.getenv("DB_STRING"),
+        description="The url connection string to connect to the database.",
+    )
 
-# Rapid API key and host
-RAPID_API_KEY = os.getenv("RAPID_API_KEY")
-RAPID_API_HOST = os.getenv("RAPID_API_HOST")
+    ECHO_SQL: bool = Field(
+        default=os.getenv("ECHO_SQL", False),
+        description="The echo sql flag to enable or disable the echo sql.",
+    )
 
-# RAPID API KEY HEADERS
-API_KEY_HEADERS = {
-    "x-rapidapi-host": os.getenv("RAPID_API_HOST"),
-    "x-rapidapi-key": os.getenv("RAPID_API_KEY"),
-}
+    YT_TO_MP3_URL: str = Field(
+        default=os.getenv("YT_TO_MP3_URL"),
+        description="The url of the yt to mp3 api.",
+    )
 
-# Directory for storing songs
-SONG_DIR = os.getenv("SONG_DIR", "downloaded_songs")
-os.makedirs(SONG_DIR, exist_ok=True)
+    QUERY_PARAM_YT_TO_MP3_URL: str = Field(
+        default=os.getenv("QUERY_PARAM_YT_TO_MP3_URL", "id"),
+        description="The query parameter for the yt to mp3 api.",
+    )
 
-# Sample rate for audio processing
-SAMPLING_RATE = int(os.getenv("SAMPLE_RATE", 44100))
+    RAPID_API_KEY: str = Field(
+        default=os.getenv("RAPID_API_KEY"),
+        description="The rapid api key for the rapid api.",
+    )
 
-# Set the confidence threshold for matching fingerprints
-# TODO: A proper confidence level should have to be determined
-CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", 0.00))
+    RAPID_API_HOST: str = Field(
+        default=os.getenv("RAPID_API_HOST"),
+        description="The rapid api host for the rapid api.",
+    )
 
-# get the YT api key
-YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
+    SONG_DIR: str = Field(
+        default=os.getenv("SONG_DIR", "downloaded_songs"),
+        description="The directory for storing songs.",
+    )
 
-# check if all the required environment variables are set
-req_vars = [DB_URL, YT_TO_MP3_API_URL, RAPID_API_KEY, RAPID_API_HOST, YOUTUBE_API_KEY]
-if not all(req_vars):
-    raise ValueError("All the environment variables are not set...")
+    SAMPLE_RATE: int = Field(
+        default=int(os.getenv("SAMPLE_RATE", 44100)),
+        description="The sample rate for audio processing.",
+    )
+
+    CONFIDENCE_THRESHOLD: float = Field(
+        default=float(os.getenv("CONFIDENCE_THRESHOLD", 0.00)),
+        description="The confidence threshold for matching fingerprints.",
+    )
+
+    YOUTUBE_API_KEY: str = Field(
+        default=os.getenv("YOUTUBE_API_KEY"),
+        description="The official youtube api key for fetching details from youtube.",
+    )
+
+    API_KEY_HEADERS: Dict[str, Any] = Field(
+        default={
+            "x-rapidapi-host": os.getenv("RAPID_API_HOST"),
+            "x-rapidapi-key": os.getenv("RAPID_API_KEY"),
+        },
+        description="The api key headers for the rapid api.",
+    )
+
+
+# create a instance to be used everywhere
+project_settings = Settings()
+
+# create the download directory if it does not exist
+os.makedirs(project_settings.SONG_DIR, exist_ok=True)

@@ -14,7 +14,7 @@ from googleapiclient.discovery import build
 
 # local imports
 from utilities.pydantic_models import SongYtInfo
-from config import YOUTUBE_API_KEY, YT_TO_MP3_API_URL, QUERY_PARAM, API_KEY_HEADERS, SONG_DIR
+from config import project_settings
 
 
 class YtManager:
@@ -31,14 +31,14 @@ class YtManager:
         """
 
         # public data
-        self.regex_pattern = r"(?:youtu\.be\/|youtube\.com(?:\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=|shorts\/)|youtu\.be\/|embed\/|v\/|m\/|watch\?(?:[^=]+=[^&]+&)*?v=))([^\"&?\/\s]{11})"
+        self.regex_pattern = r"watch\?v=([^\&]+)\&?"
 
         # private data
-        self.__API_KEY = YOUTUBE_API_KEY
-        self.__YT_TO_MP3_API_URL = YT_TO_MP3_API_URL
-        self.__YT_TO_MP3_QUERY_PARAM = QUERY_PARAM
-        self.__YT_TO_MP3_API_KEY_HEADERS = API_KEY_HEADERS
-        self.SONGS_DOWNLOAD_DIR = SONG_DIR
+        self.__API_KEY = project_settings.YOUTUBE_API_KEY
+        self.__YT_TO_MP3_API_URL = project_settings.YT_TO_MP3_URL
+        self.__YT_TO_MP3_QUERY_PARAM = project_settings.QUERY_PARAM_YT_TO_MP3_URL
+        self.__YT_TO_MP3_API_KEY_HEADERS = project_settings.API_KEY_HEADERS
+        self.SONGS_DOWNLOAD_DIR = project_settings.SONG_DIR
 
         # build the YouTube v3 API client
         self.__youtube_client = build("youtube", "v3", developerKey=self.__API_KEY)

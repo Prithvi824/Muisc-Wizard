@@ -101,7 +101,9 @@ def client(get_test_db: Callable[[], Session]):
 
 
 @pytest.fixture(autouse=True)
-def monkey_patch_get_sync_session(monkeypatch: pytest.MonkeyPatch, get_test_db: Callable[[], Session]):
+def monkey_patch_get_sync_session(
+    monkeypatch: pytest.MonkeyPatch, get_test_db: Callable[[], Session]
+):
     """
     This function is used to monkey patch the get_sync_session function.
     The function is used all over the repo to get a session for the database.
@@ -132,4 +134,6 @@ def monkey_patch_get_sync_session(monkeypatch: pytest.MonkeyPatch, get_test_db: 
         yield session
 
     # patch where it's used
-    monkeypatch.setattr("wizard.wizard.get_sync_session", fake_get_sync_session, raising=True)
+    monkeypatch.setattr(
+        "wizard.wizard.get_sync_session", fake_get_sync_session, raising=True
+    )

@@ -15,9 +15,9 @@ from fastapi.responses import JSONResponse, Response
 from fastapi import FastAPI, Query, Depends, UploadFile, File
 
 # local imports
-from config import SONG_DIR
 from database.models import Song
 from utilities.logger import logger
+from config import project_settings
 from exceptions import api_exceptions
 from wizard.wizard import MusicWizard
 from managers.youtube import YtManager
@@ -122,13 +122,15 @@ async def add_song(
                 detail="Failed to create fingerprint from song."
             )
 
+    # handle any exceptions
     except Exception as e:
+        # log the error and return
         logger.error(f"Error processing video id - {video_id}: {e}")
-
         raise api_exceptions.FingerprintError(
             detail="Failed to create fingerprint from song."
         )
 
+    # if success
     else:
 
         # create a success response
@@ -145,12 +147,15 @@ async def add_song(
             },
         )
 
+        # return response
         return JSONResponse(
             status_code=HTTPStatus.CREATED,
             content=response.model_dump(mode="json", exclude_none=True),
         )
 
+    # delete file after processing
     finally:
+
         # clean up the song file after processing
         if os.path.exists(song_path):
             os.remove(song_path)
@@ -180,16 +185,12 @@ async def match_audio(file: UploadFile = File(...)):
         contents = await file.read()
 
         # save the file locally
-        file_path = f"{SONG_DIR}/{file.filename}"
+        file_path = f"{project_settings.SONG_DIR}/{file.filename}"
         with open(file_path, "wb") as f:
             f.write(contents)
 
         # match the audio from database
         match_results = WIZARD.create_and_match_fingerprint_from_db(file_path)
-
-        # Clean up the mp3 file after processing
-        if os.path.exists(file_path):
-            os.remove(file_path)
 
         if match_results:
             # create a success response
@@ -218,12 +219,15 @@ async def match_audio(file: UploadFile = File(...)):
             return Response(status_code=HTTPStatus.NO_CONTENT)
     except Exception as e:
 
-        # Clean up the file after processing
-        if os.path.exists(file_path):
-            os.remove(file_path)
-
         logger.error(f"Error matching audio file: {e}")
         raise api_exceptions.InternalServerError(detail="Error matching audio file.")
+
+    # after proccessing
+    finally:
+
+        # Clean up the mp3 file after processing
+        if os.path.exists(file_path):
+            os.remove(file_path)
 
 
 @APP.get("/songs")
@@ -280,4 +284,4 @@ def health_check():
     Endpoint to check the health of the API.
     """
 
-    return JSONResponse(status_code=HTTPStatus.OK)
+    return Response(status_code=HTTPStatus.OK)

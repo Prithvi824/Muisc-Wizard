@@ -19,14 +19,7 @@ from utilities.logger import logger
 from database.database import get_sync_session
 from database.models import Song, SongFingerPrints
 from utilities.pydantic_models import SongDbInfo
-from config import (
-    YT_TO_MP3_API_URL,
-    QUERY_PARAM,
-    API_KEY_HEADERS,
-    SONG_DIR,
-    SAMPLING_RATE,
-    CONFIDENCE_THRESHOLD,
-)
+from config import project_settings
 
 
 class MusicWizard:
@@ -75,21 +68,21 @@ class MusicWizard:
         self.hop_length = hop_length
 
         # set the default frame length
-        self.frame_rate = SAMPLING_RATE / self.hop_length
+        self.frame_rate = project_settings.SAMPLE_RATE / self.hop_length
 
         # tunable parameters
         self.fan_value = fan_value
         self.neighborhood = neighborhood
 
         # create the directory for storing the downloaded songs
-        self.song_dir = SONG_DIR
+        self.song_dir = project_settings.SONG_DIR
 
         # set the minimum and maximum time delta between two peaks
         self.min_time_delta = min_time_delta
         self.max_time_delta = max_time_delta
 
     def create_time_series_from_file(
-        self, path: str, sampling_rate: int = SAMPLING_RATE
+        self, path: str, sampling_rate: int = project_settings.SAMPLE_RATE
     ) -> Tuple[np.ndarray, int]:
         """
         Create a time series from the provided audio file.
@@ -132,7 +125,7 @@ class MusicWizard:
             np.ndarray: The filtered audio signal.
         """
 
-        nyquist = 0.5 * SAMPLING_RATE
+        nyquist = 0.5 * project_settings.SAMPLE_RATE
         low = lowcut / nyquist
         high = highcut / nyquist
 
@@ -356,7 +349,9 @@ class MusicWizard:
         """
 
         # Create a time series from the provided audio file
-        time_series, d = self.create_time_series_from_file(path, SAMPLING_RATE)
+        time_series, d = self.create_time_series_from_file(
+            path, project_settings.SAMPLE_RATE
+        )
 
         # Apply STFT to the time series
         spectrogram = self.apply_stft(time_series)
@@ -484,7 +479,8 @@ class MusicWizard:
             # check confidence and add to result
             confidence = count / max(1, len(filtered_hashes))
 
-            if confidence >= CONFIDENCE_THRESHOLD:
+            # match confidence
+            if confidence >= project_settings.CONFIDENCE_THRESHOLD:
                 results.append((song_id, timestamp, confidence))
 
         return results if results else None
@@ -502,11 +498,14 @@ class MusicWizard:
         """
 
         # construct the API URL
-        url = YT_TO_MP3_API_URL
-        params = {QUERY_PARAM: video_id}
+        params = {project_settings.QUERY_PARAM_YT_TO_MP3_URL: video_id}
 
         # make a GET request to the YouTube to MP3 API
-        response = requests.get(url, headers=API_KEY_HEADERS, params=params)
+        response = requests.get(
+            project_settings.YT_TO_MP3_URL,
+            headers=project_settings.API_KEY_HEADERS,
+            params=params,
+        )
 
         # check if the response is successful
         try:
@@ -570,7 +569,9 @@ class MusicWizard:
                 A pydantic model containing the song info. None if no match is found.
         """
         # create a time series from the provided audio file
-        time_series, _ = self.create_time_series_from_file(path, SAMPLING_RATE)
+        time_series, _ = self.create_time_series_from_file(
+            path, project_settings.SAMPLE_RATE
+        )
 
         # apply STFT to the time series
         spectrogram = self.apply_stft(time_series)
@@ -596,7 +597,9 @@ class MusicWizard:
                 # get the song from db and add to results
                 song = session.query(Song).filter(Song.id == song_id).first()
 
-                logger.info("Matched song: %s, with confidence: %s", song.title, confidence)
+                logger.info(
+                    "Matched song: %s, with confidence: %s", song.title, confidence
+                )
                 print(f"Matched song: {song.title}, with confidence: {confidence}")
 
                 # return the title, yt_url and timestamp of the best match

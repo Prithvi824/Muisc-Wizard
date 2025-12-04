@@ -11,7 +11,7 @@ from sqlalchemy import pool
 from sqlalchemy import engine_from_config
 
 # local imports
-from config import DB_URL
+from config import project_settings
 from database.models import Base
 
 # this is the Alembic Config object, which provides
@@ -27,7 +27,7 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 # set the sqlalchemy.url to the DB_URL
-config.set_main_option("sqlalchemy.url", DB_URL)
+config.set_main_option("sqlalchemy.url", project_settings.DB_STRING)
 
 
 def run_migrations_offline() -> None:
@@ -68,9 +68,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()

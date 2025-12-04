@@ -12,13 +12,13 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 
 # local imports
-from config import DB_URL, ECHO_SQL
+from config import project_settings
 
 
 # Create a SQLAlchemy engine
 SQL_ENGINE = create_engine(
-    DB_URL,
-    echo=ECHO_SQL,
+    project_settings.DB_STRING,
+    echo=project_settings.ECHO_SQL,
     pool_size=5,
     max_overflow=10,
     pool_recycle=1800,
@@ -27,6 +27,7 @@ SQL_ENGINE = create_engine(
 
 # Create a session factory
 session_factory = sessionmaker(bind=SQL_ENGINE)
+
 
 # create a sync session yielding function
 @contextmanager
@@ -43,6 +44,7 @@ def get_sync_session() -> Generator[Session, None, None]:
         yield session
     finally:
         session.close()
+
 
 def api_get_session() -> Generator[Session, None, None]:
     """
