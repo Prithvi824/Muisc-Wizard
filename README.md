@@ -31,7 +31,7 @@ wizard.io/
     YouTube → MP3 conversion through a RapidAPI endpoint.
 -   **DB:** SQLite for local dev, Postgres in production.
 -   **Client:** React 18 · TypeScript · Vite (optionally Tailwind CSS).
--   **Deployment:** Docker with multi-stage builds for production-ready containerization.
+-   **Deployment:** Full Docker containerization with multi-stage builds for both frontend and backend.
 -   **Infra:** `.env` for configuration, GitHub Actions planned for CI.
 
 ---
@@ -40,37 +40,32 @@ wizard.io/
 
 ### 🐳 Docker Deployment (Recommended)
 
-The easiest way to run Music Wizard is using Docker:
+Alternatively, you can run each service separately:
 
 ```bash
-# 1. Clone the repository
+# 1. Clone and configure
 git clone https://github.com/Prithvi824/Muisc-Wizard.git
 cd Muisc-Wizard
-
-# 2. Configure environment variables
-# Copy .env.example to .env and fill in your API keys
 cp .env.example .env
-# Edit .env with your RapidAPI credentials and other settings
+# Edit .env with your credentials
 
-# 3. Build the Docker image
+# 2. Build and run backend
 cd backend
 docker build -t music-wizard-backend .
+docker run -d -p 8000:8000 --env-file ../.env music-wizard-backend
 
-# 4. Run the containerized backend
-docker run -d -p 8000:8000 --env-file .env music-wizard-backend
-
-# 5. Start the frontend (in a new terminal)
+# 3. Build and run frontend (in a new terminal)
 cd ../frontend
-npm install
-npm run dev   # http://localhost:5173
+docker build -t music-wizard-frontend .
+docker run -d -p 3000:80 music-wizard-frontend
 ```
 
 **Benefits of Docker deployment:**
 
--   ✅ No need to install Python dependencies locally
+-   ✅ No need to install Node.js or Python dependencies locally
 -   ✅ Consistent environment across different systems
--   ✅ Production-ready with Gunicorn and optimized performance
--   ✅ Minimal attack surface with distroless runtime image
+-   ✅ Production-ready with Nginx (frontend) and Gunicorn (backend)
+-   ✅ Minimal attack surface with optimized runtime images
 -   ✅ Easy to scale and deploy
 
 ### 📋 Manual Installation (Alternative)
@@ -107,12 +102,13 @@ npm run dev   # http://localhost:5173
 
 ### 🎯 Getting Started
 
-Once your backend is running (via Docker or manually):
+Once your services are running:
 
 1. **Add songs**: Visit `http://localhost:8000/docs` and use `GET /add-song?yt_url=<youtube_url>` to load songs into the database
-2. **Test recognition**: Open `http://localhost:5173`, record or upload a short audio clip, and see the magic happen!
+2. **Test recognition**: Open `http://localhost:3000` (Docker) or `http://localhost:5173` (dev), record or upload a short audio clip, and see the magic happen!
 
-> Frontend dev server automatically proxies API requests to `localhost:8000` for seamless development.
+> **Docker users**: Frontend runs on port 3000 and automatically connects to the backend API.  
+> **Dev users**: Frontend dev server on port 5173 proxies API requests to `localhost:8000`.
 
 ---
 
@@ -140,23 +136,23 @@ Once your backend is running (via Docker or manually):
 ### Docker Commands
 
 ```bash
-# Build the backend image
+# Docker builds
 docker build -t music-wizard-backend ./backend
+docker build -t music-wizard-frontend ./frontend
 
-# Run with environment file
-docker run -d -p 8000:8000 --env-file .env music-wizard-backend
-
-# Run with persistent volumes (recommended for production)
+# Run backend with persistent volumes
 docker run -d -p 8000:8000 --env-file .env \
   -v $(pwd)/downloaded_songs:/app/downloaded_songs \
   -v $(pwd)/logs:/app/logs \
   music-wizard-backend
 
-# View container logs
-docker logs <container_id>
+# Run frontend
+docker run -d -p 3000:80 music-wizard-frontend
 
-# Stop and remove container
-docker stop <container_id> && docker rm <container_id>
+# Container management
+docker logs <container_id>         # View logs
+docker stop <container_id>         # Stop container
+docker system prune -f             # Clean up unused containers/images
 ```
 
 ### Development Commands
