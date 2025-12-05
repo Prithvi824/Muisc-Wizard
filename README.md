@@ -1,6 +1,6 @@
 # 🎵 Music Wizard – Full-Stack Audio Fingerprinting App
 
-Music Wizard is an **open-source monorepo** that stores songs, fingerprints them, and later recognises short audio clips – think Shazam, but DIY. [Live Here](https://musicwizard.myddns.me/)
+Music Wizard is an **open-source monorepo** that stores songs, fingerprints them, and later recognises short audio clips – think Shazam, but DIY. [Live Here](https://wizard.run.place/)
 
 It comprises:
 
